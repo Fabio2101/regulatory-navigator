@@ -40,6 +40,9 @@ export default function RootLayout({
         <main className="p-6 max-w-6xl mx-auto">
           {children}
         </main>
+        <footer className="text-center text-sm text-gray-600 mt-12 mb-4 px-4">
+          ⚠️ <em>Le informazioni riportate sono solo stime indicative. Fare sempre riferimento alla normativa vigente.</em>
+        </footer>
       </body>
     </html>
   );

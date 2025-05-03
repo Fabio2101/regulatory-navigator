@@ -1,9 +1,15 @@
-// Valutazioni Salvate – Regulatory Navigator (Stile professionale)
+// Valutazioni Salvate – Regulatory Navigator
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Trash2, RotateCcw } from 'lucide-react';
+
+type Valutazione = {
+  nome: string;
+  classe: string;
+  norme: string[];
+};
 
 const getCEWorkflow = (classe: string) => {
   switch (classe) {
@@ -37,8 +43,8 @@ const getCEWorkflow = (classe: string) => {
 };
 
 export default function ValutazioniSalvate() {
-  const [salvati, setSalvati] = useState<any[]>([]);
-  const [cestino, setCestino] = useState<any[]>([]);
+  const [salvati, setSalvati] = useState<Valutazione[]>([]);
+  const [cestino, setCestino] = useState<Valutazione[]>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem('risultati_salvati');
@@ -48,7 +54,7 @@ export default function ValutazioniSalvate() {
 
     const nuova = localStorage.getItem('valutazione_da_salvare');
     if (nuova) {
-      const valutazione = JSON.parse(nuova);
+      const valutazione: Valutazione = JSON.parse(nuova);
       const aggiornato = [...(stored ? JSON.parse(stored) : []), valutazione];
       setSalvati(aggiornato);
       localStorage.setItem('risultati_salvati', JSON.stringify(aggiornato));
@@ -83,63 +89,61 @@ export default function ValutazioniSalvate() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-blue-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-extrabold text-blue-900">🧾 Valutazioni Salvate</h1>
-          <Link href="/" className="text-blue-600 underline hover:text-blue-800 text-sm">← Torna alla home</Link>
-        </div>
+    <main className="min-h-screen bg-gray-50 p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">🧾 Valutazioni Salvate</h1>
+        <Link href="/" className="text-blue-600 hover:underline">← Torna alla home</Link>
+      </div>
 
-        {salvati.length === 0 ? (
-          <p className="text-center text-gray-500">Nessuna valutazione salvata.</p>
+      {salvati.length === 0 ? (
+        <p className="text-center text-sm text-gray-500">Nessuna valutazione salvata.</p>
+      ) : (
+        <ul className="space-y-4 max-w-3xl mx-auto">
+          {salvati.map((r, i) => (
+            <li key={i} className="bg-white p-4 rounded shadow relative">
+              <button onClick={() => eliminaValutazione(i)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
+                <Trash2 size={18} />
+              </button>
+              <p className="font-semibold">🩺 {r.nome || 'Dispositivo ' + (i + 1)}</p>
+              <p>Classe: {r.classe}</p>
+              <p>Norme: {r.norme.join(', ')}</p>
+              <div className="mt-2">
+                <p className="font-medium">📌 Percorso CE Marking:</p>
+                <ul className="list-disc list-inside text-sm text-gray-700">
+                  {getCEWorkflow(r.classe).map((step, j) => (
+                    <li key={j}>{step}</li>
+                  ))}
+                </ul>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-12">
+        <h2 className="text-2xl font-semibold mb-4">🗑️ Cestino</h2>
+        {cestino.length === 0 ? (
+          <p className="text-sm text-gray-500">Il cestino è vuoto.</p>
         ) : (
-          <ul className="space-y-6">
-            {salvati.map((r, i) => (
-              <li key={i} className="bg-white p-5 rounded-2xl shadow border border-blue-100 relative">
-                <button onClick={() => eliminaValutazione(i)} className="absolute top-3 right-3 text-red-500 hover:text-red-700">
-                  <Trash2 size={18} />
-                </button>
-                <p className="font-semibold text-blue-800">🩺 {r.nome || 'Dispositivo ' + (i + 1)}</p>
-                <p className="text-sm text-gray-700">Classe: {r.classe}</p>
-                <p className="text-sm text-gray-700 mb-2">Norme: {r.norme.join(', ')}</p>
-                <div className="mt-2">
-                  <p className="font-medium text-sm text-gray-800 mb-1">📌 Percorso CE Marking:</p>
-                  <ul className="list-disc list-inside text-sm text-gray-600">
-                    {getCEWorkflow(r.classe).map((step, j) => (
-                      <li key={j}>{step}</li>
-                    ))}
-                  </ul>
+          <ul className="space-y-4 max-w-3xl mx-auto">
+            {cestino.map((r, i) => (
+              <li key={i} className="bg-gray-100 p-4 rounded shadow flex justify-between items-center">
+                <div>
+                  <p className="font-semibold">🩺 {r.nome || 'Dispositivo ' + (i + 1)}</p>
+                  <p className="text-sm">Classe: {r.classe} | Norme: {r.norme.join(', ')}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => ripristinaValutazione(i)} className="text-green-600 hover:text-green-800">
+                    <RotateCcw size={18} />
+                  </button>
+                  <button onClick={() => eliminaDefinitivamente(i)} className="text-red-600 hover:text-red-800">
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </li>
             ))}
           </ul>
         )}
-
-        <div className="mt-12">
-          <h2 className="text-2xl font-semibold text-blue-800 mb-4">🗑️ Cestino</h2>
-          {cestino.length === 0 ? (
-            <p className="text-sm text-gray-500">Il cestino è vuoto.</p>
-          ) : (
-            <ul className="space-y-4">
-              {cestino.map((r, i) => (
-                <li key={i} className="bg-gray-50 p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold text-gray-700">🩺 {r.nome || 'Dispositivo ' + (i + 1)}</p>
-                    <p className="text-sm text-gray-600">Classe: {r.classe} | Norme: {r.norme.join(', ')}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => ripristinaValutazione(i)} className="text-green-600 hover:text-green-800">
-                      <RotateCcw size={18} />
-                    </button>
-                    <button onClick={() => eliminaDefinitivamente(i)} className="text-red-600 hover:text-red-800">
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
       </div>
     </main>
   );
