@@ -93,7 +93,8 @@ export default function Wizard() {
       return;
     }
     let classe = 'I';
-    let norme = ['MDR 2017/745'];
+    const norme: string[] = ['MDR 2017/745'];
+
 
     if (allResponses.doc_tecnica) norme.push('Documentazione tecnica');
     if (allResponses.valutazione_clinica) norme.push('Valutazione clinica');
