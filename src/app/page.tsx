@@ -1,9 +1,12 @@
-// Regulatory Navigator – Wizard MDR + Libreria Normativa + PDF Export + Salva valutazione
+// src/app/page.tsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import jsPDF from 'jspdf';
+import AssistenteAI from '../../components/AssistenteAI';
+
+/* ——————————————————————————————————  DATI  —————————————————————————————————— */
 
 interface Question {
   id: number;
@@ -33,7 +36,6 @@ const questions: Question[] = [
   { id: 18, text: 'Non è considerabile dispositivo medico. Mostrare comunque normative di riferimento?', key: 'non_md' }
 ];
 
-
 const normativeLinks: { [key: string]: string } = {
   'MDR 2017/745': 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX%3A32017R0745',
   'IVDR 2017/746': 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32017R0746',
@@ -47,34 +49,39 @@ const normativeLinks: { [key: string]: string } = {
   'HTA/HTM Guidance': 'https://www.htad-ifmbe-elearning.org/'
 };
 
+/* —————————————————————————————  PDF helper  ————————————————————————————— */
+
 function generatePDF(classe: string, norme: string[]) {
   const doc = new jsPDF();
   doc.setFontSize(16);
-  doc.text("Regulatory Navigator – Risultato del questionario", 10, 20);
+  doc.text('Regulatory Navigator – Risultato del questionario', 10, 20);
   doc.setFontSize(12);
   doc.text(`Classe stimata del dispositivo: ${classe}`, 10, 40);
-  doc.text("Normative applicabili:", 10, 50);
+  doc.text('Normative applicabili:', 10, 50);
   norme.forEach((n, i) => doc.text(`- ${n}`, 10, 60 + i * 10));
-  doc.save("regulatory_navigator_risultato.pdf");
+  doc.save('regulatory_navigator_risultato.pdf');
 }
+
+/* —————————————————————————————  COMPONENTE  ————————————————————————————— */
 
 export default function Wizard() {
   const [deviceName, setDeviceName] = useState('');
   const [responses, setResponses] = useState<{ [key: string]: boolean }>({});
-  const [currentId, setCurrentId] = useState(1);
+  const [currentId, setCurrentId] = useState(0);
   const [result, setResult] = useState<{ classe: string; norme: string[]; isMD: boolean } | null>(null);
   const router = useRouter();
 
   const currentQuestion = questions.find((q) => q.id === currentId);
 
+  /* ------------------- logica domande ------------------- */
   const handleResponse = (answer: boolean) => {
     if (!currentQuestion) return;
     const newResponses = { ...responses, [currentQuestion.key]: answer };
     setResponses(newResponses);
 
     if (currentQuestion.nextYes || currentQuestion.nextNo) {
-      const nextId = answer ? currentQuestion.nextYes : currentQuestion.nextNo;
-      if (nextId) setCurrentId(nextId);
+      const nextId = answer ? currentQuestion.nextYes! : currentQuestion.nextNo!;
+      setCurrentId(nextId);
     } else {
       calculateResult(newResponses);
     }
@@ -85,7 +92,6 @@ export default function Wizard() {
       setResult({ classe: '-', norme: ['HTA/HTM Guidance'], isMD: false });
       return;
     }
-
     let classe = 'I';
     let norme = ['MDR 2017/745'];
 
@@ -95,8 +101,8 @@ export default function Wizard() {
     if (allResponses.manuale_uso) norme.push("Manuale d'uso");
     if (allResponses.tracciabilita_produzione) norme.push('Tracciabilità produzione');
     if (allResponses.gestione_reclami) norme.push('Gestione dei reclami');
-
     if (allResponses.software_clinico) norme.push('IEC 62304', 'IEC 60601');
+
     if (allResponses.impiantabile && allResponses.vitale) classe = 'III';
     else if (allResponses.impiantabile || allResponses.software_clinico) classe = 'IIb';
     else if (allResponses.sterile_misura) classe = 'IIa';
@@ -107,91 +113,133 @@ export default function Wizard() {
     if (allResponses.fragili || classe === 'III') norme.push('PMS / Vigilanza');
     if (classe === 'III' || classe === 'IIb') norme.push('UDI');
 
-    norme = Array.from(new Set(norme));
-    setResult({ classe, norme, isMD: true });
+    setResult({ classe, norme: Array.from(new Set(norme)), isMD: true });
   };
 
   const salvaValutazione = () => {
-    const nuova = {
-      nome: deviceName,
-      classe: result?.classe || '-',
-      norme: result?.norme || []
-    };
+    const nuova = { nome: deviceName, classe: result!.classe, norme: result!.norme };
     localStorage.setItem('valutazione_da_salvare', JSON.stringify(nuova));
     alert('✅ Valutazione salvata con successo!');
     router.push('/valutazioni');
   };
 
-  return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-blue-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-2xl w-full border border-blue-100">
-        <h1 className="text-3xl font-extrabold text-blue-900 text-center mb-6">Regulatory Navigator – Classificazione MDR</h1>
+  /* —————————————————————————————  RENDER  ————————————————————————————— */
 
-        {!result && currentQuestion ? (
-          <div className="space-y-6">
-            {currentId === 1 && (
-              <div>
-                <label className="text-sm font-medium text-gray-700">Nome del dispositivo</label>
-                <input
-                  className="w-full border border-gray-300 p-2 rounded mt-1 focus:ring focus:border-blue-400"
-                  placeholder="es. Monitor Cardiaco AI"
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                />
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-white to-blue-50 p-6">
+      <div className="mx-auto max-w-7xl lg:grid lg:grid-cols-[3fr_1fr] lg:gap-8 min-h-[calc(100vh-120px)]">
+
+        {/* ══════════════════════ Wizard ══════════════════════ */}
+        <section className="flex flex-col bg-white rounded-2xl shadow-lg p-8 border border-blue-100 h-full">
+          <h1 className="text-3xl font-extrabold text-blue-900 text-center mb-6">
+            Regulatory Navigator – Classificazione MDR
+          </h1>
+
+          {/* ——— BLOCCO DOMANDE ——— */}
+          {!result && currentQuestion ? (
+            <div className="space-y-6 text-center">
+              {currentId === 0 && (
+                <div className="flex flex-col items-center">
+                  <label className="text-sm font-medium text-gray-700 text-center">
+                    Nome del dispositivo
+                  </label>
+                  <input
+                    className="w-full border border-gray-300 p-2 rounded mt-1 focus:ring focus:border-blue-400"
+                    placeholder="es. Monitor Cardiaco AI"
+                    value={deviceName}
+                    onChange={(e) => setDeviceName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <p className="text-lg font-medium text-gray-800">
+                {currentQuestion.text}
+              </p>
+
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => handleResponse(true)}
+                  className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+                >
+                  Sì
+                </button>
+                <button
+                  onClick={() => handleResponse(false)}
+                  className="bg-gray-200 text-gray-800 px-6 py-2 rounded hover:bg-gray-300"
+                >
+                  No
+                </button>
               </div>
-            )}
-            <p className="text-lg font-medium text-gray-800">{currentQuestion.text}</p>
-            <div className="flex gap-4">
-              <button onClick={() => handleResponse(true)} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Sì</button>
-              <button onClick={() => handleResponse(false)} className="bg-gray-200 text-gray-800 px-6 py-2 rounded hover:bg-gray-300">No</button>
             </div>
-          </div>
-        ) : result ? (
-          <div className="text-center space-y-4">
-            {!result.isMD ? (
-              <p className="text-xl font-semibold text-red-600">Il prodotto non rientra nella definizione di dispositivo medico secondo MDR.</p>
-            ) : (
-              <>
-                <p className="text-xl font-semibold text-blue-800">Classe stimata: {result.classe}</p>
-                <p className="text-base text-gray-700">Normative applicabili:</p>
-              </>
-            )}
-            <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-              {result.norme.map((norma) => (
-                <li key={norma}>
-                  <a href={normativeLinks[norma]} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">{norma}</a>
-                </li>
-              ))}
-            </ul>
-            {result.isMD && (
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={() => generatePDF(result.classe, result.norme)}
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                >
-                  📄 Esporta PDF
-                </button>
-                <button
-                  onClick={salvaValutazione}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                >
-                  💾 Salva valutazione
-                </button>
-              </div>
-            )}
-            <button
-              onClick={() => {
-                setCurrentId(1);
-                setResponses({});
-                setResult(null);
-                setDeviceName('');
-              }}
-              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-            >
-              🔄 Ricomincia il questionario
-            </button>
-          </div>
-        ) : null}
+          ) : result ? (
+            /* ——— BLOCCO RISULTATO ——— */
+            <div className="text-center space-y-4">
+              {!result.isMD ? (
+                <p className="text-xl font-semibold text-red-600">
+                  Il prodotto non rientra nella definizione di dispositivo medico secondo MDR.
+                </p>
+              ) : (
+                <>
+                  <p className="text-xl font-semibold text-blue-800">
+                    Classe stimata: {result.classe}
+                  </p>
+                  <p className="text-base text-gray-700">
+                    Normative applicabili:
+                  </p>
+                </>
+              )}
+
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                {result.norme.map((norma) => (
+                  <li key={norma}>
+                    <a
+                      href={normativeLinks[norma]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 underline"
+                    >
+                      {norma}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+
+              {result.isMD && (
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => generatePDF(result.classe, result.norme)}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                  >
+                    📄 Esporta PDF
+                  </button>
+                  <button
+                    onClick={salvaValutazione}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    💾 Salva valutazione
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setCurrentId(0);
+                  setResponses({});
+                  setResult(null);
+                  setDeviceName('');
+                }}
+                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+              >
+                🔄 Ricomincia il questionario
+              </button>
+            </div>
+          ) : null}
+        </section>
+
+        {/* ══════════════════════ Chatbot ══════════════════════ */}
+        <aside className="flex flex-col bg-white rounded-2xl shadow-lg p-6 border border-blue-100 h-full overflow-y-auto">
+          <AssistenteAI />
+        </aside>
       </div>
     </main>
   );
