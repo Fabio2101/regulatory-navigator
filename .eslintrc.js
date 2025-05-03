@@ -1,6 +1,9 @@
 // .eslintrc.js
 module.exports = {
-    extends: ['next', 'next/core-web-vitals'],
+    root: true,
+    extends: ['next/core-web-vitals', 'eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+    parser: '@typescript-eslint/parser',
+    plugins: ['@typescript-eslint'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },
