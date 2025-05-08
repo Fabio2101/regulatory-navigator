@@ -27,7 +27,7 @@ export default function AssistenteAI() {
 
   return (
     <div className="bg-white p-6 rounded shadow max-w-xl mx-auto space-y-4">
-      <h2 className="text-xl font-bold">🤖 NormaAI</h2>
+      <h2 className="text-xl font-bold">🤖 LexAI</h2>
       <textarea
         className="w-full p-2 border rounded"
         rows={4}
